@@ -36,9 +36,9 @@ func Run(logger *zap.Logger, config *config.Config) {
 
 		var commitsToday int
 		if weekday == time.Saturday || weekday == time.Sunday {
-			commitsToday = GenerateRandomCommitsPerDay(config.WeekendCommits.MinCommitsPerDay, config.WeekendCommits.MaxCommitsPerDay)
+			commitsToday = GenerateRandomCommitsPerDay(config.WeekendMinCommits, config.WeekendMaxCommits)
 		} else {
-			commitsToday = GenerateRandomCommitsPerDay(config.MinCommitsPerDay, config.MaxCommitsPerDay)
+			commitsToday = GenerateRandomCommitsPerDay(config.MinCommits, config.MaxCommits)
 		}
 
 		for j := 0; j < commitsToday; j++ {

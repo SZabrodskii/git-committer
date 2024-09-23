@@ -1,8 +1,6 @@
-package tests
+package git
 
 import (
-	"github.com/SZabrodskii/git-committer/git"
-
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"os"
@@ -18,7 +16,7 @@ func TestCloneRepo(t *testing.T) {
 		os.RemoveAll("git-committer")
 	}
 
-	err := git.CloneRepo(testRepoURL, logger)
+	err := CloneRepo(testRepoURL, logger)
 	assert.NoError(t, err)
 
 	if _, err := os.Stat("git-committer"); os.IsNotExist(err) {
@@ -53,7 +51,7 @@ func TestCreateCommit(t *testing.T) {
 	}
 
 	message := "Initial commit"
-	err := git.CreateCommit(repoPath, message, logger)
+	err := CreateCommit(repoPath, message, logger)
 	assert.NoError(t, err)
 
 	cmd = exec.Command("git", "-C", repoPath, "log")

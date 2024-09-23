@@ -1,13 +1,15 @@
-package tests
+package git
 
 import (
-	"github.com/SZabrodskii/git-committer/git"
 	"go.uber.org/zap"
 	"testing"
 )
 
 func NewTestLogger() (*zap.Logger, error) {
-	return zap.NewNop(), nil
+	config := zap.NewProductionConfig()
+	config.OutputPaths = []string{"stdout"}
+	config.ErrorOutputPaths = []string{"stdout"}
+	return config.Build()
 }
 
 func TestCreateCommit_ErrorAdding(t *testing.T) {
@@ -16,7 +18,7 @@ func TestCreateCommit_ErrorAdding(t *testing.T) {
 		t.Fatalf("failed to create logger: %v", err)
 	}
 
-	err = git.CreateCommit("/invalid/path", "Test commit", logger)
+	err = CreateCommit("/invalid/path", "Test commit", logger)
 	if err == nil {
 		t.Fatal("expected an error, got nil")
 	}
