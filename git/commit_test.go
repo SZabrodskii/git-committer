@@ -1,6 +1,7 @@
 package git
 
 import (
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"testing"
 )
@@ -18,8 +19,11 @@ func TestCreateCommit_ErrorAdding(t *testing.T) {
 		t.Fatalf("failed to create logger: %v", err)
 	}
 
-	err = CreateCommit("/invalid/path", "Test commit", logger)
-	if err == nil {
-		t.Fatal("expected an error, got nil")
+	repo := &Repository{
+		Name:   "/invalid/path",
+		Logger: logger,
 	}
+
+	err = repo.CreateCommit("Test commit")
+	assert.Error(t, err, "expected an error, got nil")
 }
