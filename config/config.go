@@ -20,6 +20,10 @@ type Config struct {
 }
 
 func NewConfig(logger *zap.Logger) (*Config, error) {
+	if _, err := os.Stat("config.json"); os.IsNotExist(err) {
+		return nil, fmt.Errorf("config file not found")
+	}
+
 	viper.SetConfigFile("config.json")
 	viper.AutomaticEnv()
 
