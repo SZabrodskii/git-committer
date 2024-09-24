@@ -44,7 +44,7 @@ func TestLoadConfigFileNotFound(t *testing.T) {
 	_, err := NewConfig(logger)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to read config file")
+	assert.Contains(t, err.Error(), "config file not found")
 }
 
 func TestSetConfigFile(t *testing.T) {
