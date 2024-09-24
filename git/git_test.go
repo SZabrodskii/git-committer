@@ -2,32 +2,38 @@ package git
 
 import (
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 	"os"
 	"os/exec"
 	"testing"
 )
 
 func TestCloneRepo(t *testing.T) {
-	logger, _ := zap.NewProduction()
+	logger, _ := NewTestLogger()
 	testRepoURL := "https://github.com/SZabrodskii/git-committer.git"
+	repoName := "git-committer"
 
-	if _, err := os.Stat("git-committer"); !os.IsNotExist(err) {
-		os.RemoveAll("git-committer")
+	if _, err := os.Stat(repoName); !os.IsNotExist(err) {
+		os.RemoveAll(repoName)
 	}
 
-	err := CloneRepo(testRepoURL, logger)
+	repo := &Repository{
+		URL:    testRepoURL,
+		Name:   repoName,
+		Logger: logger,
+	}
+
+	err := repo.Clone()
 	assert.NoError(t, err)
 
-	if _, err := os.Stat("git-committer"); os.IsNotExist(err) {
+	if _, err := os.Stat(repoName); os.IsNotExist(err) {
 		t.Error("Expected repository to be cloned, but it was not")
 	}
 
-	os.RemoveAll("git-committer")
+	os.RemoveAll(repoName)
 }
 
 func TestCreateCommit(t *testing.T) {
-	logger, _ := zap.NewProduction()
+	logger, _ := NewTestLogger()
 	repoPath := "./test-repo"
 
 	if err := os.Mkdir(repoPath, 0755); err != nil {
@@ -50,8 +56,13 @@ func TestCreateCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	repo := &Repository{
+		Name:   repoPath,
+		Logger: logger,
+	}
+
 	message := "Initial commit"
-	err := CreateCommit(repoPath, message, logger)
+	err := repo.CreateCommit(message)
 	assert.NoError(t, err)
 
 	cmd = exec.Command("git", "-C", repoPath, "log")
