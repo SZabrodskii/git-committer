@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"github.com/SZabrodskii/git-committer/config"
 	"go.uber.org/zap"
 	"os"
 	"os/exec"
@@ -11,6 +12,14 @@ type Repository struct {
 	URL    string
 	Name   string
 	Logger *zap.Logger
+}
+
+func NewRepository(config *config.Config, logger *zap.Logger) *Repository {
+	return &Repository{
+		URL:    config.RepoURL,
+		Name:   "git-committer",
+		Logger: logger,
+	}
 }
 
 func (r *Repository) Clone() error {

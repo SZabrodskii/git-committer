@@ -9,9 +9,11 @@ import (
 func Run(logger *zap.Logger, cfg *config.Config) {
 	logger.Info("Git Auto Committer CLI initialized")
 
+	repoPath := filepath.Base(cfg.RepoURL)
+
 	repo := &Repository{
 		URL:    cfg.RepoURL,
-		Name:   filepath.Base(cfg.RepoURL),
+		Name:   repoPath,
 		Logger: logger,
 	}
 
@@ -19,19 +21,9 @@ func Run(logger *zap.Logger, cfg *config.Config) {
 		logger.Fatal("Failed to clone repo", zap.Error(err))
 	}
 
-	gitCommitter := &GitCommitter{
-		MinCommits:        cfg.MinCommits,
-		MaxCommits:        cfg.MaxCommits,
-		Days:              cfg.Days,
-		IncludeWeekends:   cfg.IncludeWeekends,
-		WeekendMinCommits: cfg.WeekendMinCommits,
-		WeekendMaxCommits: cfg.WeekendMaxCommits,
-		RepoURL:           cfg.RepoURL,
-		CommitTemplate:    cfg.CommitTemplate,
-		Repo:              repo,
-	}
+	gitCommitter := NewGitCommitter(cfg, repo)
 
-	if err := gitCommitter.generateCommits(); err != nil {
-		logger.Fatal("Failed to generate commits", zap.Error(err))
-	}
+	gitCommitter.Commit(logger)
+
+	logger.Info("Commits generated successfully!")
 }

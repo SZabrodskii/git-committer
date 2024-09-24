@@ -1,10 +1,11 @@
 {
-  "min_commits_per_day": 1,
-  "max_commits_per_day": 5,
+  "min_commits": 1,
+  "max_commits": 5,
   "days": 30,
-  "include_weekends": false,
-  "weekend_min_commits_per_day": 1,
-  "weekend_max_commits_per_day": 2,
+  "include_weekends": true,
+  "weekend_min_commits": 1,
+  "weekend_max_commits": 3,
   "repo_url": "https://github.com/SZabrodskii/git-committer.git",
-  "commit_template": "feat: auto commit"
+  "commit_template": "This is a commit",
+  "commit_types": ["feat", "fix", "chore"]
 }
