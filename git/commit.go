@@ -15,23 +15,36 @@ type Repository struct {
 }
 
 func NewRepository(config *config.Config, logger *zap.Logger) *Repository {
+	repoName := "git-committer"
 	return &Repository{
 		URL:    config.RepoURL,
-		Name:   "git-committer",
+		Name:   repoName,
 		Logger: logger,
 	}
 }
 
-func (r *Repository) Clone() error {
+func (r *Repository) Init() error {
 	if _, err := os.Stat(r.Name); os.IsNotExist(err) {
-		r.Logger.Info("Cloning repository...", zap.String("RepoURL", r.URL))
-		cmd := exec.Command("git", "clone", r.URL)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to clone repo: %w", err)
+		r.Logger.Info("Initializing new Git repository...", zap.String("RepoName", r.Name))
+
+		err := os.Mkdir(r.Name, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to create repository directory: %w", err)
 		}
-		r.Logger.Info("Repository cloned successfully")
+
+		cmd := exec.Command("git", "init", r.Name)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to initialize repo: %w", err)
+		}
+
+		cmd = exec.Command("git", "-C", r.Name, "remote", "add", "origin", r.URL)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to add remote origin: %w", err)
+		}
+
+		r.Logger.Info("Git repository initialized successfully")
 	} else {
-		r.Logger.Info("Repository already exists locally")
+		r.Logger.Info("Repository directory already exists locally")
 	}
 	return nil
 }
