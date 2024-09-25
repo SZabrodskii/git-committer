@@ -13,7 +13,7 @@ func main() {
 		fx.Provide(
 			logger.NewLogger,
 			config.NewConfig,
-			service.GetRandomAnekdot,
+			service.NewAnekdotService,
 			git.NewRepository,
 			git.NewGitCommitter,
 		),
