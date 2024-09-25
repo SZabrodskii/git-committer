@@ -38,9 +38,9 @@ func NewGitCommitter(cfg *config.Config, repo *Repository) *GitCommitter {
 	}
 }
 
-func (g *GitCommitter) createCommitsForDay(day time.Time, commits int) error {
+func (g *GitCommitter) createCommitsForDay(day time.Time, commits int, anekdotService *service.AnekdotService) error {
 	for i := 0; i < commits; i++ {
-		anekdot, err := service.GetRandomAnekdot()
+		anekdot, err := anekdotService.GetRandomAnekdot()
 		if err != nil {
 			return fmt.Errorf("failed to get anekdot: %w", err)
 		}
@@ -61,7 +61,11 @@ func (g *GitCommitter) createCommitsForDay(day time.Time, commits int) error {
 }
 
 func SaveAnekdotToFile(anekdot, repoName, fileName string) error {
-	filePath := filepath.Join(repoName, fileName+".txt")
+	filePath := filepath.Join(repoName, fmt.Sprintf("%s.txt", fileName))
+
+	if err := os.MkdirAll(repoName, os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
 
 	file, err := os.Create(filePath)
 	if err != nil {
@@ -77,7 +81,7 @@ func SaveAnekdotToFile(anekdot, repoName, fileName string) error {
 	return nil
 }
 
-func (g *GitCommitter) generateCommits() error {
+func (g *GitCommitter) generateCommits(anekdotService *service.AnekdotService) error {
 	currentDate := time.Now()
 
 	for i := 0; i < g.Days; i++ {
@@ -91,7 +95,7 @@ func (g *GitCommitter) generateCommits() error {
 			commitsForTheDay = GenerateRandomCommitsPerDay(g.WeekendMinCommits, g.WeekendMaxCommits)
 		}
 
-		err := g.createCommitsForDay(currentDate, commitsForTheDay)
+		err := g.createCommitsForDay(currentDate, commitsForTheDay, anekdotService)
 		if err != nil {
 			return err
 		}
@@ -111,11 +115,15 @@ func GenerateRandomCommitsPerDay(min int, max int) int {
 	return rand.Intn(max-min+1) + min
 }
 
-func (g *GitCommitter) Commit(logger *zap.Logger) {
-	err := g.generateCommits()
+func (g *GitCommitter) Commit(anekdotService *service.AnekdotService) error {
+	g.Repo.Logger.Info("Starting commit generation process")
+
+	err := g.generateCommits(anekdotService)
 	if err != nil {
-		logger.Error("Failed to generate commits", zap.Error(err))
-		return
+		g.Repo.Logger.Error("Failed to generate commits", zap.Error(err))
+		return err
 	}
-	logger.Info("Commits generated successfully")
+
+	g.Repo.Logger.Info("Commits generated successfully")
+	return nil
 }
