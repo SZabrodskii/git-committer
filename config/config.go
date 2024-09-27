@@ -1,11 +1,10 @@
 package config
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-	"os"
 )
 
 type Config struct {
@@ -16,20 +15,29 @@ type Config struct {
 	WeekendMinCommits int    `json:"weekend_min_commits"`
 	WeekendMaxCommits int    `json:"weekend_max_commits"`
 	RepoURL           string `json:"repo_url"`
+	RepoName          string `json:"repo_name"`
 	CommitTemplate    string `json:"commit_template"`
 }
 
 func NewConfig(logger *zap.Logger) (*Config, error) {
-	if _, err := os.Stat("config/config.json"); os.IsNotExist(err) {
-		return nil, fmt.Errorf("config file not found")
-	}
-
-	viper.SetConfigFile("config/config.json")
+	viper.SetConfigName("config")
+	viper.SetConfigType("json")
+	viper.AddConfigPath(".")
 	viper.AutomaticEnv()
 
 	err := viper.ReadInConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		logger.Warn("Failed to read config file from disk, trying embedded config", zap.Error(err))
+
+		configFile, err := GetConfigExample()
+		if err != nil {
+			return nil, fmt.Errorf("failed to read embedded config: %w", err)
+		}
+
+		err = viper.ReadConfig(bytes.NewReader(configFile))
+		if err != nil {
+			return nil, fmt.Errorf("failed to read embedded config: %w", err)
+		}
 	}
 
 	config := &Config{
@@ -40,29 +48,13 @@ func NewConfig(logger *zap.Logger) (*Config, error) {
 		WeekendMinCommits: viper.GetInt("weekend_min_commits"),
 		WeekendMaxCommits: viper.GetInt("weekend_max_commits"),
 		RepoURL:           viper.GetString("repo_url"),
+		RepoName:          viper.GetString("repo_name"),
 		CommitTemplate:    viper.GetString("commit_template"),
 	}
-	logger.Info("Config loaded successfully")
+	logger.Info("Config loaded successfully", zap.String("File", viper.ConfigFileUsed()))
 	return config, nil
 }
 
 func SetConfigFile(filename string) {
 	viper.SetConfigFile(filename)
-}
-
-//функция для ручной загрузки конфигурации из файла в обход вайпера - не удалять
-
-func LoadConfig(filePath string) (*Config, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	var config Config
-	decoder := json.NewDecoder(file)
-	if err := decoder.Decode(&config); err != nil {
-		return nil, err
-	}
-	return &config, nil
 }
