@@ -15,10 +15,9 @@ type Repository struct {
 }
 
 func NewRepository(config *config.Config, logger *zap.Logger) *Repository {
-	repoName := "git-committer"
 	return &Repository{
 		URL:    config.RepoURL,
-		Name:   repoName,
+		Name:   config.RepoName,
 		Logger: logger,
 	}
 }
@@ -26,11 +25,6 @@ func NewRepository(config *config.Config, logger *zap.Logger) *Repository {
 func (r *Repository) Init() error {
 	if _, err := os.Stat(r.Name); os.IsNotExist(err) {
 		r.Logger.Info("Initializing new Git repository...", zap.String("RepoName", r.Name))
-
-		err := os.Mkdir(r.Name, 0755)
-		if err != nil {
-			return fmt.Errorf("failed to create repository directory: %w", err)
-		}
 
 		cmd := exec.Command("git", "init", r.Name)
 		if err := cmd.Run(); err != nil {
@@ -49,10 +43,10 @@ func (r *Repository) Init() error {
 	return nil
 }
 
-func (r *Repository) CreateCommit(message string) error {
-	cmd := exec.Command("git", "-C", r.Name, "add", ".")
+func (r *Repository) CreateCommit(filePath, message string) error {
+	cmd := exec.Command("git", "-C", r.Name, "add", filePath)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to add changes: %w", err)
+		return fmt.Errorf("failed to add file %s: %w", filePath, err)
 	}
 
 	cmd = exec.Command("git", "-C", r.Name, "commit", "-m", message)
