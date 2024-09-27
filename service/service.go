@@ -2,8 +2,11 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 )
 
@@ -35,4 +38,21 @@ func (as *AnekdotService) GetRandomAnekdot() (string, error) {
 	anekdot := matches[1]
 	anekdot = regexp.MustCompile(`<[^>]*>`).ReplaceAllString(anekdot, "")
 	return anekdot, nil
+}
+
+func (as *AnekdotService) SaveAnekdotToFile(anekdot, repoName, fileName string) error {
+	filePath := filepath.Join(repoName, fmt.Sprintf("%s.txt", fileName))
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer file.Close()
+
+	_, err = file.WriteString(anekdot)
+	if err != nil {
+		return fmt.Errorf("failed to write to file: %w", err)
+	}
+
+	return nil
 }
