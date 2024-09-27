@@ -6,7 +6,6 @@ import (
 	"github.com/SZabrodskii/git-committer/service"
 	"go.uber.org/zap"
 	"math/rand"
-	"os"
 	"path/filepath"
 
 	"time"
@@ -22,9 +21,10 @@ type GitCommitter struct {
 	RepoURL           string
 	CommitTemplate    string
 	Repo              *Repository
+	AnekdotService    *service.AnekdotService
 }
 
-func NewGitCommitter(cfg *config.Config, repo *Repository) *GitCommitter {
+func NewGitCommitter(cfg *config.Config, repo *Repository, anekdotService *service.AnekdotService) *GitCommitter {
 	return &GitCommitter{
 		MinCommits:        cfg.MinCommits,
 		MaxCommits:        cfg.MaxCommits,
@@ -35,67 +35,48 @@ func NewGitCommitter(cfg *config.Config, repo *Repository) *GitCommitter {
 		RepoURL:           cfg.RepoURL,
 		CommitTemplate:    cfg.CommitTemplate,
 		Repo:              repo,
+		AnekdotService:    anekdotService,
 	}
 }
 
-func (g *GitCommitter) createCommitsForDay(day time.Time, commits int, anekdotService *service.AnekdotService) error {
+func (g *GitCommitter) createCommitsForDay(day time.Time, commits int) error {
 	for i := 0; i < commits; i++ {
-		anekdot, err := anekdotService.GetRandomAnekdot()
+		anekdot, err := g.AnekdotService.GetRandomAnekdot()
 		if err != nil {
 			return fmt.Errorf("failed to get anekdot: %w", err)
 		}
 
 		fileName := fmt.Sprintf("anekdot_%d", i+1)
-		err = SaveAnekdotToFile(anekdot, g.Repo.Name, fileName)
+		filePath := filepath.Join(g.Repo.Name, fileName)
+
+		err = g.AnekdotService.SaveAnekdotToFile(anekdot, g.Repo.Name, fileName)
 		if err != nil {
 			return fmt.Errorf("failed to save anekdot: %w", err)
 		}
 
 		commitMessage := fmt.Sprintf("feat: %s %d on %s", g.CommitTemplate, i+1, day.Format("2006-01-02"))
-		err = g.Repo.CreateCommit(commitMessage)
+		err = g.Repo.CreateCommit(filePath, commitMessage)
 		if err != nil {
 			return fmt.Errorf("failed to create commit: %w", err)
 		}
 	}
 	return nil
 }
-
-func SaveAnekdotToFile(anekdot, repoName, fileName string) error {
-	filePath := filepath.Join(repoName, fmt.Sprintf("%s.txt", fileName))
-
-	if err := os.MkdirAll(repoName, os.ModePerm); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
-	}
-
-	file, err := os.Create(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
-	}
-	defer file.Close()
-
-	_, err = file.WriteString(anekdot)
-	if err != nil {
-		return fmt.Errorf("failed to write to file: %w", err)
-	}
-
-	return nil
-}
-
-func (g *GitCommitter) generateCommits(anekdotService *service.AnekdotService) error {
+func (g *GitCommitter) generateCommits() error {
 	currentDate := time.Now()
 
 	for i := 0; i < g.Days; i++ {
 		var commitsForTheDay int
 
 		if g.IncludeWeekends || (!g.IncludeWeekends && !isWeekend(currentDate)) {
-			commitsForTheDay = GenerateRandomCommitsPerDay(g.MinCommits, g.MaxCommits)
+			commitsForTheDay = GetRandomCommitCount(g.MinCommits, g.MaxCommits)
 		}
 
 		if isWeekend(currentDate) {
-			commitsForTheDay = GenerateRandomCommitsPerDay(g.WeekendMinCommits, g.WeekendMaxCommits)
+			commitsForTheDay = GetRandomCommitCount(g.WeekendMinCommits, g.WeekendMaxCommits)
 		}
 
-		err := g.createCommitsForDay(currentDate, commitsForTheDay, anekdotService)
+		err := g.createCommitsForDay(currentDate, commitsForTheDay)
 		if err != nil {
 			return err
 		}
@@ -110,15 +91,15 @@ func isWeekend(date time.Time) bool {
 	return weekday == time.Saturday || weekday == time.Sunday
 }
 
-func GenerateRandomCommitsPerDay(min int, max int) int {
+func GetRandomCommitCount(min int, max int) int {
 	rand.Seed(time.Now().UnixNano())
 	return rand.Intn(max-min+1) + min
 }
 
-func (g *GitCommitter) Commit(anekdotService *service.AnekdotService) error {
+func (g *GitCommitter) Commit() error {
 	g.Repo.Logger.Info("Starting commit generation process")
 
-	err := g.generateCommits(anekdotService)
+	err := g.generateCommits()
 	if err != nil {
 		g.Repo.Logger.Error("Failed to generate commits", zap.Error(err))
 		return err
