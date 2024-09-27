@@ -16,8 +16,9 @@ func main() {
 			service.NewAnekdotService,
 			git.NewRepository,
 			git.NewGitCommitter,
+			NewCLIRunner,
 		),
-		fx.Invoke(git.Run),
+		fx.Invoke((*CLIRunner).Run),
 	)
 	app.Run()
 }
