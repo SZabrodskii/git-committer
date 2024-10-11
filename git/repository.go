@@ -44,14 +44,18 @@ func (r *Repository) Init() error {
 }
 
 func (r *Repository) CreateCommit(filePath, message string) error {
+	r.Logger.Info("Attempting to add file", zap.String("filePath", filePath))
+
 	cmd := exec.Command("git", "-C", r.Name, "add", filePath)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to add file %s: %w", filePath, err)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to add file %s: %w\nOutput: %s", filePath, err, string(output))
 	}
 
 	cmd = exec.Command("git", "-C", r.Name, "commit", "-m", message)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to create commit: %w", err)
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to create commit: %w\nOutput: %s", err, string(output))
 	}
 
 	r.Logger.Info("Commit created", zap.String("Message", message))
