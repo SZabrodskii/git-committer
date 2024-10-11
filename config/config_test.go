@@ -1,62 +1,56 @@
-package config
+package config_test
 
 import (
-	"github.com/spf13/viper"
-
-	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
-	"os"
+	"bytes"
+	"github.com/SZabrodskii/git-committer/config"
 	"testing"
+
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/suite"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
-func TestLoadConfigSuccess(t *testing.T) {
-	if err := os.WriteFile("config.json", []byte(`{
-	"min_commits": 1,
-	"max_commits": 5,
-	"days": 30,
-	"include_weekends": false,
-	"weekend_min_commits": 1,
-	"weekend_max_commits": 2,
-	"repo_url": "https://github.com/SZabrodskii/git-committer.git",
-	"commit_template": "feat: auto commit"
-}`), 0644); err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove("config.json")
-
-	logger, _ := zap.NewProduction()
-	cfg, err := NewConfig(logger)
-
-	assert.NoError(t, err)
-	assert.NotNil(t, cfg)
-	assert.Equal(t, 1, cfg.MinCommits)
-	assert.Equal(t, 5, cfg.MaxCommits)
-	assert.Equal(t, 30, cfg.Days)
-	assert.Equal(t, false, cfg.IncludeWeekends)
-	assert.Equal(t, 1, cfg.WeekendMinCommits)
-	assert.Equal(t, 2, cfg.WeekendMaxCommits)
-	assert.Equal(t, "https://github.com/SZabrodskii/git-committer.git", cfg.RepoURL)
-	assert.Equal(t, "feat: auto commit", cfg.CommitTemplate)
+type ConfigTestSuite struct {
+	suite.Suite
+	logger *zap.Logger
 }
 
-func TestLoadConfigFileNotFound(t *testing.T) {
-	logger, _ := zap.NewProduction()
-	_, err := NewConfig(logger)
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "config file not found")
+func (suite *ConfigTestSuite) SetupTest() {
+	encoderCfg := zap.NewDevelopmentEncoderConfig()
+	encoderCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	core := zapcore.NewCore(zapcore.NewConsoleEncoder(encoderCfg), zapcore.AddSync(bytes.NewBuffer([]byte{})), zapcore.DebugLevel)
+	suite.logger = zap.New(core)
 }
 
-func TestSetConfigFile(t *testing.T) {
-	tempFile, err := os.CreateTemp("", "test_config.json")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-	defer os.Remove(tempFile.Name())
+func (suite *ConfigTestSuite) TestLoadConfig_Success() {
+	viper.SetConfigFile("./config.json")
+	cfg, err := config.NewConfig()
+	suite.Require().NoError(err)
+	suite.Require().NotNil(cfg)
+	suite.Equal(3, cfg.MinCommits)
+	suite.Equal(7, cfg.MaxCommits)
+	suite.Equal("https://github.com/SZabrodskii/git-committer.git", cfg.RepoURL)
+}
 
-	SetConfigFile(tempFile.Name())
+func (suite *ConfigTestSuite) TestLoadConfig_FromEmbedded() {
+	viper.SetConfigFile("./testdata/nonexistent.json")
 
-	if viper.ConfigFileUsed() != tempFile.Name() {
-		t.Errorf("expected config file to be %s, got %s", tempFile.Name(), viper.ConfigFileUsed())
-	}
+	cfg, err := config.NewConfig()
+	suite.Require().NoError(err)
+	suite.Require().NotNil(cfg)
+	suite.Equal(3, cfg.MinCommits)
+	suite.Equal(7, cfg.MaxCommits)
+	suite.Equal("https://github.com/SZabrodskii/git-committer.git", cfg.RepoURL)
+}
+
+func (suite *ConfigTestSuite) TestLoadConfig_InvalidFormat() {
+	viper.SetConfigFile("./invalid_config.json")
+
+	err := viper.ReadInConfig()
+	suite.Error(err, "Expected an error due to invalid JSON format")
+}
+
+func TestConfigTestSuite(t *testing.T) {
+	suite.Run(t, new(ConfigTestSuite))
 }
