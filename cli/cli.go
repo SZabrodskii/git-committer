@@ -1,76 +1,101 @@
-package main
+package cli
 
 import (
 	"fmt"
 	"github.com/SZabrodskii/git-committer/config"
 	"github.com/SZabrodskii/git-committer/git"
-	"github.com/SZabrodskii/git-committer/service"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"os"
 )
 
+const version = "1.0.0"
+
 type CLIRunner struct {
-	Logger *zap.Logger
+	Logger    *zap.Logger
+	Committer *git.GitCommitter
 }
 
-func NewCLIRunner(logger *zap.Logger) *CLIRunner {
-	return &CLIRunner{Logger: logger}
+func NewCLIRunner(logger *zap.Logger, committer *git.GitCommitter) *CLIRunner {
+	return &CLIRunner{Logger: logger, Committer: committer}
 }
 
 func (cli *CLIRunner) Run() {
 	rootCmd := &cobra.Command{
 		Use:   "git-committer",
 		Short: "Git Committer CLI",
-		Long:  `CLI for generating git commits.`,
+		Long:  "A CLI tool to automate git commits based on specified rules.",
 		Run: func(cmd *cobra.Command, args []string) {
-			cli.Logger.Info("Default behavior executed.")
+			fmt.Println("Please provide a valid command. Use --help to see available commands.")
+			_ = cmd.Help()
 		},
 	}
+
+	rootCmd.Version = version
+	rootCmd.SetVersionTemplate(fmt.Sprintf("Git Committer version: %s\n", version))
 
 	generateCmd := &cobra.Command{
 		Use:   "generate",
-		Short: "Генерация коммитов",
+		Short: "Generate something (commits or config)",
+	}
+
+	commitCmd := &cobra.Command{
+		Use:   "commit",
+		Short: "Generate commits",
 		Run: func(cmd *cobra.Command, args []string) {
-			cli.Logger.Info("Commits generation started...")
-			generateCommit(cli.Logger)
+			cfg, err := config.NewConfig()
+			if err != nil {
+				cli.Logger.Fatal("Failed to load config", zap.Error(err))
+			}
+			dateStart, _ := cmd.Flags().GetString("dateStart")
+			dateEnd, _ := cmd.Flags().GetString("dateEnd")
+			minPerDay, _ := cmd.Flags().GetInt("minPerDay")
+			maxPerDay, _ := cmd.Flags().GetInt("maxPerDay")
+
+			cli.Logger.Info("Loaded config", zap.Any("config", cfg))
+			cli.Logger.Info(fmt.Sprintf("Start date: %s, End date: %s, Min commits per day: %d, Max commits per day: %d", dateStart, dateEnd, minPerDay, maxPerDay))
+
+			cli.Committer.UpdateCommitLimits(minPerDay, maxPerDay)
+
+			if err := cli.Committer.Commit(); err != nil {
+				cli.Logger.Error("Failed to generate commits", zap.Error(err))
+			}
 		},
 	}
 
+	commitCmd.Flags().String("dateStart", "", "Start date (YYYY-MM-DD)")
+	commitCmd.Flags().String("dateEnd", "", "End date (YYYY-MM-DD)")
+	commitCmd.Flags().Int("minPerDay", 3, "Min commits per day")
+	commitCmd.Flags().Int("maxPerDay", 7, "Max commits per day")
+
+	configCmd := &cobra.Command{
+		Use:   "config",
+		Short: "Generate config file",
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := cli.generateConfig(); err != nil {
+				cli.Logger.Error("Failed to generate config file", zap.Error(err))
+			}
+		},
+	}
+
+	generateCmd.AddCommand(commitCmd)
+	generateCmd.AddCommand(configCmd)
+
 	rootCmd.AddCommand(generateCmd)
 
-	generateCmd.Flags().String("dateStart", "", "Date of start of generation (YYYY-MM-DD)")
-	generateCmd.Flags().String("dateEnd", "", "Date of end of generation (YYYY-MM-DD)")
-	generateCmd.Flags().Int("maxPerDay", 10, "Max number of commits per day")
-	generateCmd.Flags().Int("minPerDay", 1, "Min number of commits per day")
-
-	viper.BindPFlag("dateStart", generateCmd.Flags().Lookup("dateStart"))
-	viper.BindPFlag("dateEnd", generateCmd.Flags().Lookup("dateEnd"))
-	viper.BindPFlag("maxPerDay", generateCmd.Flags().Lookup("maxPerDay"))
-	viper.BindPFlag("minPerDay", generateCmd.Flags().Lookup("minPerDay"))
-
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		cli.Logger.Fatal("Command execution failed", zap.Error(err))
 	}
 }
 
-func generateCommit(logger *zap.Logger) {
-	cfg, err := config.NewConfig(logger)
-	if err != nil {
-		logger.Fatal("Error loading config", zap.Error(err))
+func (cli *CLIRunner) generateConfig() error {
+	_, err := os.Stat("config.json")
+	if err == nil {
+		return fmt.Errorf("config file already exists")
 	}
-
-	repo := git.NewRepository(cfg, logger)
-	anekdotService := service.NewAnekdotService()
-
-	gitCommitter := git.NewGitCommitter(cfg, repo, anekdotService)
-
-	err = gitCommitter.Commit()
+	err = config.GenerateConfig()
 	if err != nil {
-		logger.Fatal("Error generating commits", zap.Error(err))
+		return fmt.Errorf("failed to generate config: %w", err)
 	}
-
-	logger.Info("Commits generated successfully.")
+	return nil
 }
