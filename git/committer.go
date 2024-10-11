@@ -7,7 +7,6 @@ import (
 	"go.uber.org/zap"
 	"math/rand"
 	"path/filepath"
-
 	"time"
 )
 
@@ -46,15 +45,15 @@ func (g *GitCommitter) createCommitsForDay(day time.Time, commits int) error {
 			return fmt.Errorf("failed to get anekdot: %w", err)
 		}
 
-		fileName := fmt.Sprintf("anekdot_%d", i+1)
-		filePath := filepath.Join(g.Repo.Name, fileName)
+		fileName := fmt.Sprintf("anekdot_%s_%d", day.Format("2006-01-02"), i+1)
+		filePath := filepath.Join("example", fileName)
 
-		err = g.AnekdotService.SaveAnekdotToFile(anekdot, g.Repo.Name, fileName)
+		err = g.AnekdotService.SaveAnekdotToFile(anekdot, filePath)
 		if err != nil {
 			return fmt.Errorf("failed to save anekdot: %w", err)
 		}
 
-		commitMessage := fmt.Sprintf("feat: %s %d on %s", g.CommitTemplate, i+1, day.Format("2006-01-02"))
+		commitMessage := fmt.Sprintf("feat: %s %d on %s", g.CommitTemplate, i+1, day.Format("2023-07-13"))
 		err = g.Repo.CreateCommit(filePath, commitMessage)
 		if err != nil {
 			return fmt.Errorf("failed to create commit: %w", err)
@@ -62,19 +61,19 @@ func (g *GitCommitter) createCommitsForDay(day time.Time, commits int) error {
 	}
 	return nil
 }
-func (g *GitCommitter) generateCommits() error {
-	currentDate := time.Now()
+func (g *GitCommitter) generateCommits(dateStart, dateEnd time.Time) error {
+	currentDate := dateStart
 
-	for i := 0; i < g.Days; i++ {
+	for !currentDate.After(dateEnd) {
 		var commitsForTheDay int
-
-		if g.IncludeWeekends || (!g.IncludeWeekends && !isWeekend(currentDate)) {
-			commitsForTheDay = GetRandomCommitCount(g.MinCommits, g.MaxCommits)
-		}
 
 		if isWeekend(currentDate) {
 			commitsForTheDay = GetRandomCommitCount(g.WeekendMinCommits, g.WeekendMaxCommits)
+		} else {
+			commitsForTheDay = GetRandomCommitCount(g.MinCommits, g.MaxCommits)
 		}
+
+		g.Repo.Logger.Info(fmt.Sprintf("Committing %d commits for %s", commitsForTheDay, currentDate.Format("2006-01-02")))
 
 		err := g.createCommitsForDay(currentDate, commitsForTheDay)
 		if err != nil {
@@ -96,10 +95,18 @@ func GetRandomCommitCount(min int, max int) int {
 	return rand.Intn(max-min+1) + min
 }
 
+func (g *GitCommitter) UpdateCommitLimits(minCommits, maxCommits int) {
+	g.MinCommits = minCommits
+	g.MaxCommits = maxCommits
+}
+
 func (g *GitCommitter) Commit() error {
 	g.Repo.Logger.Info("Starting commit generation process")
 
-	err := g.generateCommits()
+	dateStart := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	dateEnd := time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC)
+
+	err := g.generateCommits(dateStart, dateEnd)
 	if err != nil {
 		g.Repo.Logger.Error("Failed to generate commits", zap.Error(err))
 		return err
