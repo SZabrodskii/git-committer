@@ -3,14 +3,14 @@ package service
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"regexp"
 )
 
-type AnekdotService struct{}
+type AnekdotService struct {
+}
 
 func NewAnekdotService() *AnekdotService {
 	return &AnekdotService{}
@@ -23,7 +23,7 @@ func (as *AnekdotService) GetRandomAnekdot() (string, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.New("failed to read response body")
 	}
@@ -40,9 +40,7 @@ func (as *AnekdotService) GetRandomAnekdot() (string, error) {
 	return anekdot, nil
 }
 
-func (as *AnekdotService) SaveAnekdotToFile(anekdot, repoName, fileName string) error {
-	filePath := filepath.Join(repoName, fmt.Sprintf("%s.txt", fileName))
-
+func (as *AnekdotService) SaveAnekdotToFile(anekdot, filePath string) error {
 	file, err := os.Create(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
