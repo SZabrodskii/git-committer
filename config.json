@@ -1,0 +1,11 @@
+{
+  "min_commits": 3,
+  "max_commits": 7,
+  "days": 30,
+  "include_weekends": true,
+  "weekend_min_commits": 1,
+  "weekend_max_commits": 3,
+  "repo_url": "ssh://git@github.com/SZabrodskii/git-committer.git",
+  "repo_name": "git-committer",
+  "commit_template": "Add anekdot"
+}

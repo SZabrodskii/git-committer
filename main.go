@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/SZabrodskii/git-committer/cli"
 	"github.com/SZabrodskii/git-committer/config"
 	"github.com/SZabrodskii/git-committer/git"
 	"github.com/SZabrodskii/git-committer/logger"
@@ -16,9 +17,9 @@ func main() {
 			service.NewAnekdotService,
 			git.NewRepository,
 			git.NewGitCommitter,
-			NewCLIRunner,
+			cli.NewCLIRunner,
 		),
-		fx.Invoke((*CLIRunner).Run),
+		fx.Invoke((*cli.CLIRunner).Run),
 	)
 	app.Run()
 }
