@@ -53,8 +53,8 @@ func (g *GitCommitter) createCommitsForDay(day time.Time, commits int) error {
 			return fmt.Errorf("failed to save anekdot: %w", err)
 		}
 
-		commitMessage := fmt.Sprintf("feat: %s %d on %s", g.CommitTemplate, i+1, day.Format("2023-07-13"))
-		err = g.Repo.CreateCommit(filePath, commitMessage)
+		commitMessage := fmt.Sprintf("feat: %s %d on %s", g.CommitTemplate, i+1, day.Format("2006-01-02"))
+		err = g.Repo.CreateCommit(filePath, commitMessage, day)
 		if err != nil {
 			return fmt.Errorf("failed to create commit: %w", err)
 		}
@@ -104,7 +104,7 @@ func (g *GitCommitter) Commit() error {
 	g.Repo.Logger.Info("Starting commit generation process")
 
 	dateStart := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	dateEnd := time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC)
+	dateEnd := time.Date(2025, 7, 23, 0, 0, 0, 0, time.UTC)
 
 	err := g.generateCommits(dateStart, dateEnd)
 	if err != nil {

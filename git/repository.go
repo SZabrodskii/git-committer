@@ -6,6 +6,7 @@ import (
 	"go.uber.org/zap"
 	"os"
 	"os/exec"
+	"time"
 )
 
 type Repository struct {
@@ -43,7 +44,7 @@ func (r *Repository) Init() error {
 	return nil
 }
 
-func (r *Repository) CreateCommit(filePath, message string) error {
+func (r *Repository) CreateCommit(filePath, message string, date time.Time) error {
 	r.Logger.Info("Attempting to add file", zap.String("filePath", filePath))
 
 	cmd := exec.Command("git", "-C", r.Name, "add", filePath)
@@ -52,7 +53,10 @@ func (r *Repository) CreateCommit(filePath, message string) error {
 		return fmt.Errorf("failed to add file %s: %w\nOutput: %s", filePath, err, string(output))
 	}
 
-	cmd = exec.Command("git", "-C", r.Name, "commit", "-m", message)
+	dateStr := date.Format(time.RFC3339)
+	cmd = exec.Command("git", "-C", r.Name, "commit", "--date", dateStr, "-m", message)
+	cmd.Env = os.Environ()
+
 	output, err = cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to create commit: %w\nOutput: %s", err, string(output))
