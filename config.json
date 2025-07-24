@@ -6,6 +6,6 @@
   "weekend_min_commits": 1,
   "weekend_max_commits": 3,
   "repo_url": "ssh://git@github.com/SZabrodskii/git-committer.git",
-  "repo_name": "git-committer",
+  "repo_name": ".",
   "commit_template": "Add anekdot"
 }
